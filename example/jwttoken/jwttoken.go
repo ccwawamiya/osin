@@ -6,8 +6,8 @@ package main
 import (
 	"crypto/rsa"
 	"fmt"
-	"github.com/RangelReale/osin"
-	"github.com/RangelReale/osin/example"
+	"github.com/ccwawamiya/osin"
+	"github.com/ccwawamiya/osin/example"
 	"github.com/dgrijalva/jwt-go"
 	"net/http"
 	"net/url"

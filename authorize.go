@@ -29,6 +29,7 @@ type AuthorizeRequest struct {
 	Scope       string
 	RedirectUri string
 	State       string
+	Token       string
 
 	// Set if request is authorized
 	Authorized bool
@@ -199,6 +200,72 @@ func (s *Server) HandleAuthorizeRequest(w *Response, r *http.Request) *Authorize
 	return nil
 }
 
+
+// HandleAuthorizeRequest is the main http.HandlerFunc for handling
+// authorization requests
+func (s *Server) HandleAuthorizeTokenRequest(w *Response, r *http.Request) *AuthorizeRequest {
+	err1 := r.ParseForm()
+	if err1 != nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		w.InternalError = err1
+		return nil
+	}
+
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
+
+	ret := &AuthorizeRequest{
+		State:       r.Form.Get("state"),
+		Token:       r.Form.Get("token"),
+		Scope:       r.Form.Get("scope"),
+		Authorized:  false,
+		HttpRequest: r,
+	}
+
+	// must have a valid client
+	if client := getClient(auth, w.Storage, w); client == nil {
+		w.SetErrorState(E_UNAUTHORIZED_CLIENT, "", ret.State)
+		return nil
+	}else if client.GetId() != "kfapp" {
+		w.SetErrorState(E_UNSUPER_CLIENT, "", ret.State)
+		return nil
+	}
+
+	//验证tokan
+	accessData, err := w.Storage.LoadAccess(ret.Token)
+	if err != nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		w.InternalError = err
+		return nil
+	}
+	if accessData == nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		return nil
+	}
+	if accessData.Client == nil {
+		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		return nil
+	}
+	if accessData.IsExpiredAt(s.Now()) {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
+	ret.UserData = accessData.UserData
+
+	//验证token 授权的client_id
+	ret.Client, err = w.Storage.GetClient(r.Form.Get("client_id"));if  err != nil {
+		w.SetError(E_SERVER_ERROR, "")
+		w.InternalError = err
+		return nil
+	}
+	ret.Type = CODE
+	ret.Expiration = s.Config.AuthorizationExpiration
+	return ret
+
+}
+
 func (s *Server) FinishAuthorizeRequest(w *Response, r *http.Request, ar *AuthorizeRequest) {
 	// don't process if is already an error
 	if w.IsError {
@@ -268,4 +335,45 @@ func (s *Server) FinishAuthorizeRequest(w *Response, r *http.Request, ar *Author
 		// redirect with error
 		w.SetErrorState(E_ACCESS_DENIED, "", ar.State)
 	}
+}
+
+func (s *Server) FinishAuthorizeTokenRequest(w *Response, r *http.Request, ar *AuthorizeRequest) {
+	// don't process if is already an error
+	if w.IsError {
+		return
+	}
+
+	// generate authorization token
+	ret := &AuthorizeData{
+		Client:      ar.Client,
+		CreatedAt:   s.Now(),
+		ExpiresIn:   ar.Expiration,
+		RedirectUri: ar.RedirectUri,
+		State:       ar.State,
+		Scope:       ar.Scope,
+		UserData:    ar.UserData,
+		// Optional PKCE challenge
+		CodeChallenge:       ar.CodeChallenge,
+		CodeChallengeMethod: ar.CodeChallengeMethod,
+	}
+
+	// generate token code
+	code, err := s.AuthorizeTokenGen.GenerateAuthorizeToken(ret)
+	if err != nil {
+		w.SetErrorState(E_SERVER_ERROR, "", ar.State)
+		w.InternalError = err
+		return
+	}
+	ret.Code = code
+
+	// save authorization token
+	if err = w.Storage.SaveAuthorize(ret); err != nil {
+		w.SetErrorState(E_SERVER_ERROR, "", ar.State)
+		w.InternalError = err
+		return
+	}
+
+	// redirect with code
+	w.Output["code"] = ret.Code
+	w.Output["state"] = ret.State
 }

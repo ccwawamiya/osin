@@ -3,6 +3,7 @@ package osin
 import (
 	"net/http"
 	"time"
+	"strconv"
 )
 
 // InfoRequest is a request for information about some AccessData
@@ -70,12 +71,16 @@ func (s *Server) FinishInfoRequest(w *Response, r *http.Request, ir *InfoRequest
 	// output data
 	w.Output["client_id"] = ir.AccessData.Client.GetId()
 	w.Output["access_token"] = ir.AccessData.AccessToken
-	w.Output["token_type"] = s.Config.TokenType
+	//注释token_type,暂时不知有什么用处
+	//w.Output["token_type"] = s.Config.TokenType
 	w.Output["expires_in"] = ir.AccessData.CreatedAt.Add(time.Duration(ir.AccessData.ExpiresIn)*time.Second).Sub(s.Now()) / time.Second
 	if ir.AccessData.RefreshToken != "" {
 		w.Output["refresh_token"] = ir.AccessData.RefreshToken
 	}
 	if ir.AccessData.Scope != "" {
 		w.Output["scope"] = ir.AccessData.Scope
+	}
+	if ir.AccessData.UserData != "" {
+		w.Output["user_id"],_ = strconv.ParseInt(ir.AccessData.UserData.(string),10,64)
 	}
 }

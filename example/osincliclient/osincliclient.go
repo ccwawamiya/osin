@@ -6,8 +6,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/RangelReale/osin"
-	"github.com/RangelReale/osin/example"
+	"github.com/ccwawamiya/osin"
+	"github.com/ccwawamiya/osin/example"
 	"github.com/RangelReale/osincli"
 	"net/http"
 )

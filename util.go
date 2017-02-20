@@ -57,7 +57,7 @@ func CheckBasicAuth(r *http.Request) (*BasicAuth, error) {
 // Return "Bearer" token from request. The header has precedence over query string.
 func CheckBearerAuth(r *http.Request) *BearerAuth {
 	authHeader := r.Header.Get("Authorization")
-	authForm := r.Form.Get("code")
+	authForm := r.Form.Get("access_token")
 	if authHeader == "" && authForm == "" {
 		return nil
 	}

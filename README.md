@@ -1,7 +1,7 @@
 OSIN
 ====
 
-[![GoDoc](https://godoc.org/github.com/RangelReale/osin?status.svg)](https://godoc.org/github.com/RangelReale/osin)
+[![GoDoc](https://godoc.org/github.com/ccwawamiya/osin?status.svg)](https://godoc.org/github.com/ccwawamiya/osin)
 
 
 Golang OAuth2 server library
@@ -20,7 +20,7 @@ The library implements the majority of the specification, like authorization and
 ### Example Server
 
 ````go
-import "github.com/RangelReale/osin"
+import "github.com/ccwawamiya/osin"
 
 // TestStorage implements the "osin.Storage" interface
 server := osin.NewServer(osin.NewServerConfig(), &TestStorage{})
