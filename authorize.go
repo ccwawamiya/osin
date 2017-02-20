@@ -225,7 +225,8 @@ func (s *Server) HandleAuthorizeTokenRequest(w *Response, r *http.Request) *Auth
 	}
 
 	// must have a valid client
-	if client := getClient(auth, w.Storage, w); client == nil {
+	client := getClient(auth, w.Storage, w);
+	if client == nil {
 		w.SetErrorState(E_UNAUTHORIZED_CLIENT, "", ret.State)
 		return nil
 	}else if client.GetId() != "kfapp" {
@@ -252,10 +253,15 @@ func (s *Server) HandleAuthorizeTokenRequest(w *Response, r *http.Request) *Auth
 		w.SetError(E_INVALID_GRANT, "")
 		return nil
 	}
+	if(accessData.Client.GetId() != client.GetId()) {
+		w.SetErrorState(E_UNSUPER_CLIENT_TOKEN, "", ret.State)
+		return nil
+	}
 	ret.UserData = accessData.UserData
 
 	//验证token 授权的client_id
-	ret.Client, err = w.Storage.GetClient(r.Form.Get("client_id"));if  err != nil {
+	ret.Client, err = w.Storage.GetClient(r.Form.Get("client_id"));
+	if  err != nil {
 		w.SetError(E_SERVER_ERROR, "")
 		w.InternalError = err
 		return nil

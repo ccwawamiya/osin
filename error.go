@@ -5,6 +5,7 @@ type DefaultErrorId string
 const (
 	E_INVALID_REQUEST           string = "invalid_request"
 	E_UNSUPER_CLIENT                   = "unsuper_client"
+	E_UNSUPER_CLIENT_TOKEN             = "unsuper_client_token"
 	E_UNAUTHORIZED_CLIENT              = "unauthorized_client"
 	E_ACCESS_DENIED                    = "access_denied"
 	E_UNSUPPORTED_RESPONSE_TYPE        = "unsupported_response_type"
