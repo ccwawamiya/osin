@@ -54,7 +54,7 @@ func (s *Server) HandleInfoRequest(w *Response, r *http.Request) *InfoRequest {
 		return nil
 	}
 	if ret.AccessData.IsExpiredAt(s.Now()) {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_TOKEN_EXPIRED, "")
 		return nil
 	}
 

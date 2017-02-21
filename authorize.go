@@ -250,7 +250,7 @@ func (s *Server) HandleAuthorizeTokenRequest(w *Response, r *http.Request) *Auth
 		return nil
 	}
 	if accessData.IsExpiredAt(s.Now()) {
-		w.SetError(E_INVALID_GRANT, "")
+		w.SetError(E_TOKEN_EXPIRED, "")
 		return nil
 	}
 	if(accessData.Client.GetId() != client.GetId()) {
