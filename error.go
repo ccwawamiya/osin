@@ -34,6 +34,8 @@ type DefaultErrors struct {
 func NewDefaultErrors() *DefaultErrors {
 	r := &DefaultErrors{errormap: make(map[string]string)}
 	r.errormap[E_INVALID_REQUEST] = "The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed."
+	r.errormap[E_UNSUPER_CLIENT] = "The client is not super client."
+	r.errormap[E_UNSUPER_CLIENT_TOKEN] = "The Token is not super client authorization token."
 	r.errormap[E_UNAUTHORIZED_CLIENT] = "The client is not authorized to request a token using this method."
 	r.errormap[E_ACCESS_DENIED] = "The resource owner or authorization server denied the request."
 	r.errormap[E_UNSUPPORTED_RESPONSE_TYPE] = "The authorization server does not support obtaining a token using this method."

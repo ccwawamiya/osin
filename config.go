@@ -60,6 +60,9 @@ type ServerConfig struct {
 	// Separator to support multiple URIs in Client.GetRedirectUri().
 	// If blank (the default), don't allow multiple URIs.
 	RedirectUriSeparator string
+
+	//super client
+	SuperClient string
 }
 
 // NewServerConfig returns a new ServerConfig with default configuration
@@ -73,5 +76,6 @@ func NewServerConfig() *ServerConfig {
 		ErrorStatusCode:           200,
 		AllowClientSecretInParams: false,
 		AllowGetAccessRequest:     false,
+		SuperClient:               "kfapp",
 	}
 }
