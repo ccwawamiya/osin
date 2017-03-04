@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"strconv"
 )
 
 // AccessRequestType is the type for OAuth param `grant_type`
@@ -262,7 +261,7 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 
 	// set rest of data
 	ret.Scope = ret.AuthorizeData.Scope
-	ret.UserData,_ = strconv.ParseInt(ret.AuthorizeData.UserData.(string),10,64)
+	ret.UserData = ret.AuthorizeData.UserData
 
 
 	return ret
@@ -358,8 +357,7 @@ func (s *Server) handleAuthorizationTokenRequest(w *Response, r *http.Request) *
 
     // set rest of data
     ret.RedirectUri = ret.AccessData.RedirectUri
-    //强制转为int64
-    ret.UserData,_ = strconv.ParseInt(ret.AccessData.UserData.(string),10,64)
+    ret.UserData = ret.AccessData.UserData
     if ret.Scope == "" {
         ret.Scope = ret.AccessData.Scope
     }
@@ -432,8 +430,7 @@ func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *Access
 
 	// set rest of data
 	ret.RedirectUri = ret.AccessData.RedirectUri
-	//强制转为int64
-	ret.UserData,_ = strconv.ParseInt(ret.AccessData.UserData.(string),10,64)
+	ret.UserData = ret.AccessData.UserData
 	if ret.Scope == "" {
 		ret.Scope = ret.AccessData.Scope
 	}
@@ -611,10 +608,7 @@ func (s *Server) FinishAccessRequest(w *Response, r *http.Request, ar *AccessReq
 			w.Output["refresh_token"] = ret.RefreshToken
 		}
 		if ar.Scope != "" {
-			w.Output["scope"] = ar.Scope
-		}
-		if ar.UserData != "" {
-			w.Output["user_id"] = ar.UserData
+			w.Output["scope"] = ret.Scope
 		}
 	} else {
 		w.SetError(E_ACCESS_DENIED, "")
