@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"regexp"
 	"time"
-	"strings"
 )
 
 // AuthorizeRequestType is the type for OAuth param `response_type`
