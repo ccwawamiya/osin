@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"regexp"
 	"time"
+	"strings"
 )
 
 // AuthorizeRequestType is the type for OAuth param `response_type`
@@ -229,7 +230,14 @@ func (s *Server) HandleAuthorizeTokenRequest(w *Response, r *http.Request) *Auth
 	if client == nil {
 		w.SetErrorState(E_UNAUTHORIZED_CLIENT, "", ret.State)
 		return nil
-	}else if client.GetId() != s.Config.SuperClient {
+	}
+	superTag := false
+	for _, w := range s.Config.SuperClient {
+		if client.GetId() == w {
+			superTag = true
+		}
+	}
+	if superTag == false {
 		w.SetErrorState(E_UNSUPER_CLIENT, "", ret.State)
 		return nil
 	}

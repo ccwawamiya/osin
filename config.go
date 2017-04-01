@@ -62,7 +62,7 @@ type ServerConfig struct {
 	RedirectUriSeparator string
 
 	//super client
-	SuperClient string
+	SuperClient []string
 }
 
 // NewServerConfig returns a new ServerConfig with default configuration
@@ -76,6 +76,6 @@ func NewServerConfig() *ServerConfig {
 		ErrorStatusCode:           200,
 		AllowClientSecretInParams: false,
 		AllowGetAccessRequest:     false,
-		SuperClient:               "kfapp",
+		SuperClient:               []string{"kfapp","kfapp_bandai"},
 	}
 }
