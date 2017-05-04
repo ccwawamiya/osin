@@ -16,6 +16,7 @@ const (
 	AUTHORIZATION_CODE  AccessRequestType = "authorization_code"
 	REFRESH_TOKEN       AccessRequestType = "refresh_token"
 	PASSWORD            AccessRequestType = "password"
+	CAPTCHAPASS         AccessRequestType = "captchapass"
 	CLIENT_CREDENTIALS  AccessRequestType = "client_credentials"
 	ASSERTION           AccessRequestType = "assertion"
 	AUTHORIZATION_TOKEN AccessRequestType = "authorization_token"
@@ -142,6 +143,8 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 			return s.handleRefreshTokenRequest(w, r)
 		case PASSWORD:
 			return s.handlePasswordRequest(w, r)
+		case CAPTCHAPASS:
+			return s.handleCaptchapassRequest(w, r)
 		case CLIENT_CREDENTIALS:
 			return s.handleClientCredentialsRequest(w, r)
 		case ASSERTION:
@@ -465,6 +468,46 @@ func (s *Server) handlePasswordRequest(w *Response, r *http.Request) *AccessRequ
 	// "username" and "password" is required
 	if ret.Username == "" || ret.Password == "" {
 		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
+
+	// must have a valid client
+	if ret.Client = getClient(auth, w.Storage, w); ret.Client == nil {
+		return nil
+	}
+
+	// set redirect uri
+	ret.RedirectUri = FirstUri(ret.Client.GetRedirectUri(), s.Config.RedirectUriSeparator)
+
+	return ret
+}
+
+
+func (s *Server) handleCaptchapassRequest(w *Response, r *http.Request) *AccessRequest {
+	// get client authentication
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
+
+	// generate access token
+	ret := &AccessRequest{
+		Type:            CAPTCHAPASS,
+		Username:        r.Form.Get("username"),
+		Password:        r.Form.Get("password"),
+		Scope:           r.Form.Get("scope"),
+		GenerateRefresh: true,
+		Expiration:      s.Config.AccessExpiration,
+		HttpRequest:     r,
+	}
+
+	// "username" and "password" is required
+	if ret.Username == "" || ret.Password == "" {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
+	if !VerifyMobile(ret.Username) {
+		w.SetError(E_INVALID_GRANT, "手机号码错误")
 		return nil
 	}
 
