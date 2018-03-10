@@ -21,6 +21,7 @@ const (
 	ASSERTION           AccessRequestType = "assertion"
 	AUTHORIZATION_TOKEN AccessRequestType = "authorization_token"
 	IMPLICIT            AccessRequestType = "__implicit"
+	WECHATLOGIN         AccessRequestType = "wechat"
 )
 
 // AccessRequest is a request for access tokens
@@ -149,8 +150,8 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 			return s.handleClientCredentialsRequest(w, r)
 		case ASSERTION:
 			return s.handleAssertionRequest(w, r)
-        case AUTHORIZATION_TOKEN:
-            return s.handleAuthorizationTokenRequest(w,r)
+		case AUTHORIZATION_TOKEN:
+			return s.handleAuthorizationTokenRequest(w, r)
 		}
 	}
 
@@ -167,8 +168,8 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 
 	// generate access token
 	ret := &AccessRequest{
-		Type:            AUTHORIZATION_CODE,
-		Code:            r.Form.Get("code"),
+		Type: AUTHORIZATION_CODE,
+		Code: r.Form.Get("code"),
 		//CodeVerifier:    r.Form.Get("code_verifier"),
 		//RedirectUri:     r.Form.Get("redirect_uri"),
 		GenerateRefresh: true,
@@ -266,7 +267,6 @@ func (s *Server) handleAuthorizationCodeRequest(w *Response, r *http.Request) *A
 	ret.Scope = ret.AuthorizeData.Scope
 	ret.UserData = ret.AuthorizeData.UserData
 
-
 	return ret
 }
 
@@ -294,84 +294,83 @@ func extraScopes(access_scopes, refresh_scopes string) bool {
 	return false
 }
 
-
 func (s *Server) handleAuthorizationTokenRequest(w *Response, r *http.Request) *AccessRequest {
-    // get client authentication
-    auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
-    if auth == nil {
-        return nil
-    }
+	// get client authentication
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
 
-    // generate access token
-    ret := &AccessRequest{
-        Type:            AUTHORIZATION_TOKEN,
-        Code:            r.Form.Get("token"),
-        Scope:           r.Form.Get("scope"),
-        GenerateRefresh: true,
-        Expiration:      s.Config.AccessExpiration,
-        HttpRequest:     r,
-    }
+	// generate access token
+	ret := &AccessRequest{
+		Type:            AUTHORIZATION_TOKEN,
+		Code:            r.Form.Get("token"),
+		Scope:           r.Form.Get("scope"),
+		GenerateRefresh: true,
+		Expiration:      s.Config.AccessExpiration,
+		HttpRequest:     r,
+	}
 
-    // "refresh_token" is required
-    if ret.Code == "" {
-        w.SetError(E_INVALID_GRANT, "")
-        return nil
-    }
+	// "refresh_token" is required
+	if ret.Code == "" {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
 
-    // must have a valid client
-    if ret.Client = getClient(auth, w.Storage, w); ret.Client == nil {
-        return nil
-    }else if ret.Client.GetId() != "kfapp" {
-        return nil
-    }
+	// must have a valid client
+	if ret.Client = getClient(auth, w.Storage, w); ret.Client == nil {
+		return nil
+	} else if ret.Client.GetId() != "kfapp" {
+		return nil
+	}
 
-    // must be a valid token
-    var err error
-    ret.AccessData, err = w.Storage.LoadAccess(ret.Code)
-    if err != nil {
-        w.SetError(E_INVALID_REQUEST, "")
-        w.InternalError = err
-        return nil
-    }
-    if ret.AccessData == nil {
-        w.SetError(E_INVALID_REQUEST, "")
-        return nil
-    }
-    if ret.AccessData.Client == nil {
-        w.SetError(E_UNAUTHORIZED_CLIENT, "")
-        return nil
-    }
-    if ret.AccessData.Client.GetRedirectUri() == "" {
-        w.SetError(E_UNAUTHORIZED_CLIENT, "")
-        return nil
-    }
+	// must be a valid token
+	var err error
+	ret.AccessData, err = w.Storage.LoadAccess(ret.Code)
+	if err != nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		w.InternalError = err
+		return nil
+	}
+	if ret.AccessData == nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		return nil
+	}
+	if ret.AccessData.Client == nil {
+		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		return nil
+	}
+	if ret.AccessData.Client.GetRedirectUri() == "" {
+		w.SetError(E_UNAUTHORIZED_CLIENT, "")
+		return nil
+	}
 	if ret.AccessData.IsExpiredAt(s.Now()) {
 		w.SetError(E_INVALID_GRANT, "")
 		return nil
 	}
 
-    // client must be the same as the previous token
-    if ret.AccessData.Client.GetId() != ret.Client.GetId() {
-        w.SetError(E_INVALID_CLIENT, "")
-        w.InternalError = errors.New("Client id must be the same from previous token")
-        return nil
+	// client must be the same as the previous token
+	if ret.AccessData.Client.GetId() != ret.Client.GetId() {
+		w.SetError(E_INVALID_CLIENT, "")
+		w.InternalError = errors.New("Client id must be the same from previous token")
+		return nil
 
-    }
+	}
 
-    // set rest of data
-    ret.RedirectUri = ret.AccessData.RedirectUri
-    ret.UserData = ret.AccessData.UserData
-    if ret.Scope == "" {
-        ret.Scope = ret.AccessData.Scope
-    }
+	// set rest of data
+	ret.RedirectUri = ret.AccessData.RedirectUri
+	ret.UserData = ret.AccessData.UserData
+	if ret.Scope == "" {
+		ret.Scope = ret.AccessData.Scope
+	}
 
-    if extraScopes(ret.AccessData.Scope, ret.Scope) {
-        w.SetError(E_ACCESS_DENIED, "")
-        w.InternalError = errors.New("the requested scope must not include any scope not originally granted by the resource owner")
-        return nil
-    }
+	if extraScopes(ret.AccessData.Scope, ret.Scope) {
+		w.SetError(E_ACCESS_DENIED, "")
+		w.InternalError = errors.New("the requested scope must not include any scope not originally granted by the resource owner")
+		return nil
+	}
 
-    return ret
+	return ret
 }
 
 func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *AccessRequest {
@@ -481,7 +480,6 @@ func (s *Server) handlePasswordRequest(w *Response, r *http.Request) *AccessRequ
 
 	return ret
 }
-
 
 func (s *Server) handleCaptchapassRequest(w *Response, r *http.Request) *AccessRequest {
 	// get client authentication

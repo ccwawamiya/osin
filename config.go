@@ -76,6 +76,6 @@ func NewServerConfig() *ServerConfig {
 		ErrorStatusCode:           200,
 		AllowClientSecretInParams: false,
 		AllowGetAccessRequest:     false,
-		SuperClient:               []string{"kfapp","kfapp_bandai"},
+		SuperClient:               []string{"kfapp","kfapp_bandai","sheep"},
 	}
 }
