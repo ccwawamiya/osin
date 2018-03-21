@@ -22,6 +22,7 @@ const (
 	AUTHORIZATION_TOKEN AccessRequestType = "authorization_token"
 	IMPLICIT            AccessRequestType = "__implicit"
 	WECHATLOGIN         AccessRequestType = "wechat"
+	QZONELOGIN          AccessRequestType = "qzone"
 )
 
 // AccessRequest is a request for access tokens
@@ -154,6 +155,8 @@ func (s *Server) HandleAccessRequest(w *Response, r *http.Request) *AccessReques
 			return s.handleAuthorizationTokenRequest(w, r)
 		case WECHATLOGIN:
 			return s.handleWechatLoginRequest(w, r)
+		case QZONELOGIN:
+			return s.handleQzoneLoginRequest(w, r)
 		}
 	}
 
@@ -595,6 +598,43 @@ func (s *Server) handleWechatLoginRequest(w *Response, r *http.Request) *AccessR
 	ret := &AccessRequest{
 		Type: WECHATLOGIN,
 		Code: r.Form.Get("code"),
+		Scope: r.Form.Get("scope"),
+		Username: r.Form.Get("username"),
+		//CodeVerifier:    r.Form.Get("code_verifier"),
+		//RedirectUri:     r.Form.Get("redirect_uri"),
+		GenerateRefresh: true,
+		Expiration:      s.Config.AccessExpiration,
+		HttpRequest:     r,
+	}
+	// "code" is required
+	if ret.Code == "" {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
+
+	// must have a valid client
+	if ret.Client = getClient(auth, w.Storage, w); ret.Client == nil {
+		return nil
+	}
+
+	// set rest of data
+	ret.RedirectUri = FirstUri(ret.Client.GetRedirectUri(), s.Config.RedirectUriSeparator)
+	return ret
+}
+
+func (s *Server) handleQzoneLoginRequest(w *Response, r *http.Request) *AccessRequest {
+	// get client authentication
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
+
+	// generate access token
+	ret := &AccessRequest{
+		Type: QZONELOGIN,
+		Code: r.Form.Get("code"),
+		Scope: r.Form.Get("scope"),
+		Username: r.Form.Get("username"),
 		//CodeVerifier:    r.Form.Get("code_verifier"),
 		//RedirectUri:     r.Form.Get("redirect_uri"),
 		GenerateRefresh: true,
