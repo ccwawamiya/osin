@@ -101,7 +101,7 @@ func ValidateUri(baseUri string, redirectUri string) error {
 }
 
 func VerifyMobile(mobile string) bool {
-	reg := regexp.MustCompile(`^(13[0-9]|15[0-9]|18[0-9]|14[0-9]|17[0-9])\d{8}$`)
+	reg := regexp.MustCompile(`^1[3-9]\d{9}$`)
 	return reg.MatchString(mobile)
 }
 
