@@ -16,6 +16,7 @@ const (
 	E_INVALID_GRANT                    = "invalid_grant"
 	E_INVALID_CLIENT                   = "invalid_client"
 	E_TOKEN_EXPIRED                    = "token_expired"
+	E_DETECT_FAILURE                   = "detect_failure"
 )
 
 var (
@@ -47,6 +48,7 @@ func NewDefaultErrors() *DefaultErrors {
 	r.errormap[E_INVALID_GRANT] = "The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client."
 	r.errormap[E_INVALID_CLIENT] = "Client authentication failed (e.g., unknown client, no client authentication included, or unsupported authentication method)."
 	r.errormap[E_TOKEN_EXPIRED] = "The token expired."
+	r.errormap[E_DETECT_FAILURE] = "The token expired."
 	return r
 }
 

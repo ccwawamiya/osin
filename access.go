@@ -378,6 +378,41 @@ func (s *Server) handleAuthorizationTokenRequest(w *Response, r *http.Request) *
 	return ret
 }
 
+func (s *Server) HandleDetectRequest(w *Response, r *http.Request) *AccessRequest {
+	// Only allow GET or POST
+	if r.Method == "GET" {
+		if !s.Config.AllowGetAccessRequest {
+			w.SetError(E_INVALID_REQUEST, "")
+			w.InternalError = errors.New("Request must be POST")
+			return nil
+		}
+	} else if r.Method != "POST" {
+		w.SetError(E_INVALID_REQUEST, "")
+		w.InternalError = errors.New("Request must be POST")
+		return nil
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		w.InternalError = err
+		return nil
+	}
+
+	grantType := AccessRequestType(r.Form.Get("grant_type"))
+	if s.Config.AllowedAccessTypes.Exists(grantType) {
+		switch grantType {
+		case WECHATLOGIN:
+			return s.handleWechatDetectRequest(w, r)
+		case QZONELOGIN:
+			return s.handleQzoneDetectRequest(w, r)
+		}
+	}
+
+	w.SetError(E_UNSUPPORTED_GRANT_TYPE, "")
+	return nil
+}
+
 func (s *Server) handleRefreshTokenRequest(w *Response, r *http.Request) *AccessRequest {
 	// get client authentication
 	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
@@ -596,9 +631,44 @@ func (s *Server) handleWechatLoginRequest(w *Response, r *http.Request) *AccessR
 
 	// generate access token
 	ret := &AccessRequest{
-		Type: WECHATLOGIN,
-		Code: r.Form.Get("code"),
-		Scope: r.Form.Get("scope"),
+		Type:     WECHATLOGIN,
+		Code:     r.Form.Get("code"),
+		Scope:    r.Form.Get("scope"),
+		Username: r.Form.Get("username"),
+		//CodeVerifier:    r.Form.Get("code_verifier"),
+		//RedirectUri:     r.Form.Get("redirect_uri"),
+		GenerateRefresh: true,
+		Expiration:      s.Config.AccessExpiration,
+		HttpRequest:     r,
+	}
+	// "code" is required
+	if ret.Code == "" {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
+
+	// must have a valid client
+	if ret.Client = getClient(auth, w.Storage, w); ret.Client == nil {
+		return nil
+	}
+
+	// set rest of data
+	ret.RedirectUri = FirstUri(ret.Client.GetRedirectUri(), s.Config.RedirectUriSeparator)
+	return ret
+}
+
+func (s *Server) handleWechatDetectRequest(w *Response, r *http.Request) *AccessRequest {
+	// get client authentication
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
+
+	// generate access token
+	ret := &AccessRequest{
+		Type:     WECHATLOGIN,
+		Code:     r.Form.Get("code"),
+		Scope:    r.Form.Get("scope"),
 		Username: r.Form.Get("username"),
 		//CodeVerifier:    r.Form.Get("code_verifier"),
 		//RedirectUri:     r.Form.Get("redirect_uri"),
@@ -631,9 +701,9 @@ func (s *Server) handleQzoneLoginRequest(w *Response, r *http.Request) *AccessRe
 
 	// generate access token
 	ret := &AccessRequest{
-		Type: QZONELOGIN,
-		Code: r.Form.Get("code"),
-		Scope: r.Form.Get("scope"),
+		Type:     QZONELOGIN,
+		Code:     r.Form.Get("code"),
+		Scope:    r.Form.Get("scope"),
 		Username: r.Form.Get("username"),
 		//CodeVerifier:    r.Form.Get("code_verifier"),
 		//RedirectUri:     r.Form.Get("redirect_uri"),
@@ -641,6 +711,41 @@ func (s *Server) handleQzoneLoginRequest(w *Response, r *http.Request) *AccessRe
 		Expiration:      s.Config.AccessExpiration,
 		HttpRequest:     r,
 	}
+	// "code" is required
+	if ret.Code == "" {
+		w.SetError(E_INVALID_GRANT, "")
+		return nil
+	}
+
+	// must have a valid client
+	if ret.Client = getClient(auth, w.Storage, w); ret.Client == nil {
+		return nil
+	}
+
+	// set rest of data
+	ret.RedirectUri = FirstUri(ret.Client.GetRedirectUri(), s.Config.RedirectUriSeparator)
+	return ret
+}
+
+func (s *Server) handleQzoneDetectRequest(w *Response, r *http.Request) *AccessRequest {
+	// get client authentication
+	auth := getClientAuth(w, r, s.Config.AllowClientSecretInParams)
+	if auth == nil {
+		return nil
+	}
+	// generate access token
+	ret := &AccessRequest{
+		Type:     QZONELOGIN,
+		Code:     r.Form.Get("code"),
+		Scope:    r.Form.Get("scope"),
+		Username: r.Form.Get("username"),
+		//CodeVerifier:    r.Form.Get("code_verifier"),
+		//RedirectUri:     r.Form.Get("redirect_uri"),
+		GenerateRefresh: true,
+		Expiration:      s.Config.AccessExpiration,
+		HttpRequest:     r,
+	}
+
 	// "code" is required
 	if ret.Code == "" {
 		w.SetError(E_INVALID_GRANT, "")
@@ -728,6 +833,14 @@ func (s *Server) FinishAccessRequest(w *Response, r *http.Request, ar *AccessReq
 		}
 	} else {
 		w.SetError(E_ACCESS_DENIED, "")
+	}
+}
+
+func (s *Server) FinishDetectRequest(w *Response, r *http.Request, ar *AccessRequest) {
+	// don't process if is already an error
+	if w.IsError {
+		w.SetErrorState(E_DETECT_FAILURE, w.InternalError.Error(), "")
+		return
 	}
 }
 
